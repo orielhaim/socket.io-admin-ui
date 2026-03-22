@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "vite-plugin-vuetify";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import packageJson from "./package.json";
@@ -11,6 +12,7 @@ export default defineConfig({
   base: "./",
   plugins: [
     vue(),
+    tailwindcss(),
     vuetify({
       autoImport: true,
     }),

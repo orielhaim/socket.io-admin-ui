@@ -8,6 +8,7 @@ import { useConfigStore } from "./stores/config";
 import { useConnectionStore } from "./stores/connection";
 import { useServersStore } from "./stores/servers";
 import "./plugins/chartjs";
+import "./styles/tailwind.css"; 
 
 const app = createApp(App);
 const pinia = createPinia();

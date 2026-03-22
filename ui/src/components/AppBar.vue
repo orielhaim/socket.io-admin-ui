@@ -1,20 +1,65 @@
 <template>
-  <v-app-bar>
-    <v-app-bar-nav-icon class="d-lg-none" @click="configStore.toggleNavigationDrawer()" />
-    <v-img :src="logoSrc" alt="logo" max-height="40" max-width="40" />
-    <v-toolbar-title class="ml-3">Socket.IO Admin UI</v-toolbar-title>
-    <v-btn variant="text" size="small" class="ml-2 text-none" :href="releaseNotesLink" target="_blank">
+  <v-app-bar
+    :height="60"
+    flat
+    class="border-b border-[rgba(var(--v-border-color),var(--v-border-opacity))]"
+  >
+    <!-- Mobile nav toggle -->
+    <v-app-bar-nav-icon
+      class="lg:hidden"
+      @click="configStore.toggleNavigationDrawer()"
+    />
+
+    <!-- Logo + Title -->
+    <div class="flex items-center gap-3 pl-2">
+      <div class="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+        <v-img :src="logoSrc" alt="logo" :height="22" :width="22" />
+      </div>
+      <div class="hidden items-baseline gap-2 sm:flex">
+        <span class="text-sm font-semibold tracking-tight">
+          Socket.IO
+        </span>
+        <span class="text-xs font-medium text-[rgba(var(--v-theme-on-surface),0.45)]">
+          Admin UI
+        </span>
+      </div>
+      <a
+      :href="releaseNotesLink"
+      target="_blank"
+      rel="noopener"
+      class="inline-flex items-center rounded-full border border-[rgba(var(--v-border-color),var(--v-border-opacity))] px-2.5 py-0.5 text-[10px] font-semibold text-[rgba(var(--v-theme-on-surface),0.5)] transition-colors hover:border-[rgba(var(--v-theme-primary),0.3)] hover:text-[rgb(var(--v-theme-primary))]"
+    >
       v{{ version }}
-    </v-btn>
+    </a>
+    </div>
 
     <v-spacer />
 
-    <div class="d-none d-lg-flex align-center ga-3">
-      <div class="text-caption">
-        <div>{{ $t("connection.serverUrl") }}{{ $t("separator") }}<code>{{ connectionStore.serverUrl || "-" }}</code></div>
-        <div>{{ $t("status") }}{{ $t("separator") }}<ConnectionStatus :connected="connectionStore.connected" /></div>
+    <!-- Connection info — desktop only -->
+    <div class="hidden items-center gap-5 lg:flex pr-2">
+      <div class="flex items-center gap-3">
+        <div class="flex flex-col items-end gap-0.5">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-medium text-[rgba(var(--v-theme-on-surface),0.45)]">
+              {{ connectionStore.serverUrl || "—" }}
+            </span>
+          </div>
+          <ConnectionStatus :connected="connectionStore.connected" />
+        </div>
       </div>
-      <v-btn variant="outlined" @click="$emit('update')">{{ $t("update") }}</v-btn>
+
+      <div class="h-6 w-px bg-[rgba(var(--v-border-color),var(--v-border-opacity))]" />
+
+      <v-btn
+        variant="tonal"
+        size="small"
+        color="primary"
+        class="text-xs! font-semibold! tracking-normal!"
+        @click="$emit('update')"
+      >
+        <v-icon icon="mdi-refresh" size="14" class="mr-1" />
+        {{ $t("update") }}
+      </v-btn>
     </div>
   </v-app-bar>
 </template>
@@ -26,6 +71,8 @@ import { useConfigStore } from "../stores/config";
 import { useConnectionStore } from "../stores/connection";
 import darkLogo from "../assets/logo-dark.svg";
 import lightLogo from "../assets/logo-light.svg";
+
+defineEmits(["update"]);
 
 const configStore = useConfigStore();
 const connectionStore = useConnectionStore();
