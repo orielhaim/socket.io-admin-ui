@@ -5,9 +5,11 @@
 
     <v-main :class="backgroundClass">
       <v-container fluid>
-        <Transition :name="transitionName" mode="out-in">
-          <router-view />
-        </Transition>
+        <router-view v-slot="{ Component, route: activeRoute }">
+          <Transition :name="transitionName" mode="out-in">
+            <component :is="Component" :key="activeRoute.fullPath" />
+          </Transition>
+        </router-view>
       </v-container>
     </v-main>
 
@@ -54,7 +56,7 @@ const backgroundClass = computed(() => {
 watch(
   () => configStore.darkTheme,
   (dark) => {
-    theme.global.name.value = dark ? "dark" : "light";
+    theme.change(dark ? "dark" : "light")
   },
   { immediate: true },
 );
