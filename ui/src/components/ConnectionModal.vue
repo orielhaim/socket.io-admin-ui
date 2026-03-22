@@ -1,144 +1,131 @@
 <template>
-  <v-dialog
-    :value="isOpen"
-    transition="dialog-bottom-transition"
-    max-width="300"
-    persistent
-  >
+  <v-dialog :model-value="isOpen" max-width="500" persistent>
     <v-card>
       <v-card-title>{{ $t("connection.title") }}</v-card-title>
       <v-card-text>
-        <form @submit.prevent="onSubmit">
+        <v-form @submit.prevent="submit">
           <v-text-field
             v-model="serverUrl"
             :label="$t('connection.serverUrl')"
             placeholder="https://example.com"
+            variant="outlined"
+            density="comfortable"
             required
-          ></v-text-field>
+          />
           <v-text-field
             v-model="username"
             :label="$t('connection.username')"
-          ></v-text-field>
+            variant="outlined"
+            density="comfortable"
+          />
           <v-text-field
             v-model="password"
             :label="$t('connection.password')"
             type="password"
-          ></v-text-field>
+            variant="outlined"
+            density="comfortable"
+          />
 
           <v-switch
             v-model="showAdvancedOptions"
             :label="$t('connection.advanced-options')"
             inset
-            dense
+            hide-details
+            class="mb-2"
           />
 
           <v-expand-transition>
-            <div v-if="showAdvancedOptions">
-              <v-switch
-                v-model="wsOnly"
-                :label="$t('connection.websocket-only')"
-                inset
-                dense
-                v-show="showAdvancedOptions"
-              />
-
-              <v-text-field
-                v-model="namespace"
-                :label="$t('connection.namespace')"
-              ></v-text-field>
-
-              <v-text-field
-                v-model="path"
-                :label="$t('connection.path')"
-              ></v-text-field>
-
+            <div v-show="showAdvancedOptions">
+              <v-switch v-model="wsOnly" :label="$t('connection.websocket-only')" inset hide-details class="mb-2" />
+              <v-text-field v-model="namespace" :label="$t('connection.namespace')" variant="outlined" density="comfortable" />
+              <v-text-field v-model="path" :label="$t('connection.path')" variant="outlined" density="comfortable" />
               <v-select
                 v-model="parser"
                 :label="$t('connection.parser')"
                 :items="parserOptions"
+                item-title="title"
+                item-value="value"
+                variant="outlined"
+                density="comfortable"
               />
             </div>
           </v-expand-transition>
 
-          <v-btn
-            :loading="isConnecting"
-            :disabled="isConnecting || !isValid"
-            type="submit"
-            class="primary"
-            >{{ $t("connection.connect") }}</v-btn
-          >
-          <div v-if="error" class="red--text mt-3">
-            {{ errorMessage }}
-          </div>
-        </form>
+          <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">{{ errorMessage }}</v-alert>
+          <v-btn type="submit" :loading="isConnecting" :disabled="!serverUrl" block color="primary">
+            {{ $t("connection.connect") }}
+          </v-btn>
+        </v-form>
       </v-card-text>
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "ConnectionModal",
+<script setup>
+import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 
-  props: {
-    isOpen: Boolean,
-    isConnecting: Boolean,
-    initialServerUrl: String,
-    initialWsOnly: Boolean,
-    initialPath: String,
-    initialNamespace: String,
-    initialParser: String,
-    error: String,
-  },
+const props = defineProps({
+  isOpen: Boolean,
+  initialServerUrl: String,
+  initialWsOnly: Boolean,
+  initialPath: String,
+  initialNamespace: String,
+  initialParser: String,
+  isConnecting: Boolean,
+  error: String,
+});
 
-  data() {
-    return {
-      showAdvancedOptions: false,
-      serverUrl: this.initialServerUrl,
-      wsOnly: this.initialWsOnly,
-      path: this.initialPath,
-      namespace: this.initialNamespace,
-      username: "",
-      password: "",
-      parser: this.initialParser,
-      parserOptions: [
-        {
-          value: "default",
-          text: this.$t("connection.default-parser"),
-        },
-        {
-          value: "msgpack",
-          text: this.$t("connection.msgpack-parser"),
-        },
-      ],
-    };
-  },
+const emit = defineEmits(["submit"]);
+const { t } = useI18n();
 
-  computed: {
-    isValid() {
-      return this.serverUrl && this.serverUrl.length;
-    },
-    errorMessage() {
-      return this.error === "invalid credentials"
-        ? this.$t("connection.invalid-credentials")
-        : this.$t("connection.error") + this.$t("separator") + this.error;
-    },
-  },
+const serverUrl = ref("");
+const username = ref("");
+const password = ref("");
+const wsOnly = ref(false);
+const path = ref("/socket.io");
+const namespace = ref("/admin");
+const parser = ref("default");
+const showAdvancedOptions = ref(false);
+const parserOptions = [
+  { title: "default", value: "default" },
+  { title: "msgpack", value: "msgpack" },
+];
 
-  methods: {
-    onSubmit() {
-      this.$emit("submit", {
-        serverUrl: this.serverUrl,
-        wsOnly: this.wsOnly,
-        path: this.path,
-        namespace: this.namespace,
-        username: this.username,
-        password: this.password,
-        parser: this.parser,
-      });
-    },
+const errorMessage = computed(() => {
+  if (!props.error) {
+    return "";
+  }
+  if (props.error === "invalid credentials") {
+    return t("connection.invalid-credentials");
+  }
+  return `${t("connection.error")}${t("separator")}${props.error}`;
+});
+
+watch(
+  () => props.isOpen,
+  (value) => {
+    if (!value) {
+      return;
+    }
+    serverUrl.value = props.initialServerUrl || "";
+    wsOnly.value = props.initialWsOnly || false;
+    path.value = props.initialPath || "/socket.io";
+    namespace.value = props.initialNamespace || "/admin";
+    parser.value = props.initialParser || "default";
   },
-};
+  { immediate: true },
+);
+
+function submit() {
+  emit("submit", {
+    serverUrl: serverUrl.value,
+    username: username.value,
+    password: password.value,
+    wsOnly: wsOnly.value,
+    path: path.value,
+    namespace: namespace.value,
+    parser: parser.value,
+  });
+}
 </script>
-
-<style scoped></style>

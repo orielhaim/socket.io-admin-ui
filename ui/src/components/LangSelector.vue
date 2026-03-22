@@ -1,66 +1,44 @@
 <template>
   <v-select
-    dense
-    :value="lang"
+    v-model="lang"
     :items="languages"
-    @change="onSelectLang"
     :label="$t('config.language')"
+    variant="outlined"
+    density="compact"
+    item-title="text"
+    item-value="value"
+    hide-details
+    class="mb-3"
   />
 </template>
 
-<script>
-import { mapMutations, mapState } from "vuex";
+<script setup>
+import { computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import { useConfigStore } from "../stores/config";
 
-export default {
-  name: "LangSelector",
+const configStore = useConfigStore();
+const i18n = useI18n();
+const languages = [
+  { text: "বাংলা", value: "bn" },
+  { text: "English", value: "en" },
+  { text: "Français", value: "fr" },
+  { text: "한국어", value: "ko" },
+  { text: "Português (Brazil)", value: "pt-BR" },
+  { text: "Türkçe", value: "tr" },
+  { text: "简体中文", value: "zh-CN" },
+];
 
-  data() {
-    return {
-      languages: [
-        {
-          text: "বাংলা",
-          value: "bn",
-        },
-        {
-          text: "English",
-          value: "en",
-        },
-        {
-          text: "Français",
-          value: "fr",
-        },
-        {
-          text: "한국어",
-          value: "ko",
-        },
-        {
-          text: "Português (Brazil)",
-          value: "pt-BR",
-        },
-        {
-          text: "Türkçe",
-          value: "tr",
-        },
-        {
-          text: "简体中文",
-          value: "zh-CN",
-        },
-      ],
-    };
+const lang = computed({
+  get: () => configStore.lang,
+  set: (value) => configStore.selectLang(value),
+});
+
+watch(
+  () => configStore.lang,
+  (value) => {
+    i18n.locale.value = value;
   },
-
-  computed: {
-    ...mapState({
-      lang: (state) => state.config.lang,
-    }),
-  },
-
-  methods: {
-    ...mapMutations("config", ["selectLang"]),
-    onSelectLang(lang) {
-      this.$i18n.locale = lang;
-      this.selectLang(lang);
-    },
-  },
-};
+  { immediate: true },
+);
 </script>

@@ -1,29 +1,22 @@
 <template>
   <v-switch
-    :input-value="readonly"
-    @change="toggleReadonly"
+    v-model="readonly"
     :label="$t('config.readonly')"
     :disabled="disabled"
+    density="compact"
+    hide-details
     inset
-    dense
   />
 </template>
 
-<script>
-import { mapMutations, mapState } from "vuex";
+<script setup>
+import { computed } from "vue";
+import { useConfigStore } from "../stores/config";
 
-export default {
-  name: "ReadonlyToggle",
-
-  computed: {
-    ...mapState({
-      readonly: (state) => state.config.readonly,
-      disabled: (state) => state.config.supportedFeatures.length === 0,
-    }),
-  },
-
-  methods: {
-    ...mapMutations("config", ["toggleReadonly"]),
-  },
-};
+const configStore = useConfigStore();
+const disabled = computed(() => configStore.supportedFeatures.length === 0);
+const readonly = computed({
+  get: () => configStore.readonly,
+  set: () => configStore.toggleReadonly(),
+});
 </script>

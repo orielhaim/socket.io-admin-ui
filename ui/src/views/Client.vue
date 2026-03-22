@@ -1,67 +1,48 @@
 <template>
   <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-container v-if="client" fluid>
-      <v-row>
-        <v-col sm="12" md="6" lg="4">
-          <ClientDetails :client="client" :socket="socket" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <InitialRequest :socket="socket" v-if="socket" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <ClientSockets :sockets="client.sockets" />
-        </v-col>
-      </v-row>
-    </v-container>
+    <v-breadcrumbs :items="breadcrumbs" />
+    <v-row v-if="client">
+      <v-col cols="12" md="4">
+        <v-card>
+          <v-card-title>{{ $t("clients.details") }}</v-card-title>
+          <v-table>
+            <tbody>
+              <tr><td>ID</td><td>{{ client.id }}</td></tr>
+              <tr><td>{{ $t("clients.sockets-count") }}</td><td>{{ client.sockets.length }}</td></tr>
+            </tbody>
+          </v-table>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="8">
+        <v-card>
+          <v-card-title>{{ $t("sockets.title") }}</v-card-title>
+          <v-list>
+            <v-list-item
+              v-for="socket in client.sockets"
+              :key="socket.id"
+              :to="{ name: 'socket', params: { nsp: socket.nsp, id: socket.id } }"
+            >
+              <v-list-item-title>{{ socket.id }}</v-list-item-title>
+              <template #append><Transport :transport="socket.transport" /></template>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
+    </v-row>
   </div>
 </template>
 
-<script>
-import { mapGetters } from "vuex";
-import ClientDetails from "../components/Client/ClientDetails";
-import InitialRequest from "../components/Socket/InitialRequest";
-import ClientSockets from "../components/Client/ClientSockets";
+<script setup>
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import Transport from "../components/Transport.vue";
+import { useMainStore } from "../stores/main";
 
-export default {
-  name: "Client",
-
-  components: { ClientSockets, InitialRequest, ClientDetails },
-
-  data() {
-    return {
-      socket: null,
-      client: null,
-    };
-  },
-
-  computed: {
-    breadcrumbItems() {
-      return [
-        {
-          text: this.$t("clients.title"),
-          to: { name: "clients" },
-          exact: true,
-        },
-        {
-          text: this.$t("clients.details"),
-          disabled: true,
-        },
-      ];
-    },
-    ...mapGetters("main", ["findClientById"]),
-  },
-
-  mounted() {
-    this.client = this.findClientById(this.$route.params.id);
-    if (this.client) {
-      this.socket = this.client.sockets[0];
-    }
-  },
-};
+const route = useRoute();
+const mainStore = useMainStore();
+const client = computed(() => mainStore.findClientById(route.params.id));
+const breadcrumbs = computed(() => [
+  { title: "Clients", to: { name: "clients" } },
+  { title: "Details" },
+]);
 </script>
-
-<style scoped></style>

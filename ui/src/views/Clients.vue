@@ -1,131 +1,55 @@
 <template>
   <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
+    <v-breadcrumbs :items="[{ title: $t('clients.title') }]" />
     <v-card>
-      <v-data-table
-        :headers="headers"
-        :items="clients"
-        :footer-props="footerProps"
-        class="row-pointer"
-        @click:row="displayDetails"
-      >
-        <template v-slot:item.address="{ item }">
-          <span v-if="item.sockets.length">{{
-            item.sockets[0].handshake.address
-          }}</span>
-        </template>
-
-        <template v-slot:item.transport="{ item }">
-          <Transport
-            v-if="item.sockets.length"
-            :transport="item.sockets[0].transport"
+      <v-data-table :headers="headers" :items="mainStore.clients" @click:row="onRowClick">
+        <template #item.address="{ item }">{{ item.sockets[0]?.handshake?.address || "-" }}</template>
+        <template #item.transport="{ item }"><Transport :transport="item.sockets[0]?.transport" /></template>
+        <template #item.sockets="{ item }">{{ item.sockets.length }}</template>
+        <template #item.actions="{ item }">
+          <v-btn
+            v-if="disconnectSupported"
+            icon="mdi-logout"
+            size="small"
+            variant="text"
+            :disabled="configStore.readonly"
+            @click.stop="disconnect(item)"
           />
-        </template>
-
-        <template v-slot:item.sockets="{ item }">
-          {{ item.sockets.length }}
-        </template>
-
-        <template v-slot:item.actions="{ item }">
-          <v-tooltip bottom v-if="isSocketDisconnectSupported">
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
-                @click="disconnect(item)"
-                :disabled="isReadonly"
-                small
-                class="ml-3"
-              >
-                <v-icon>mdi-logout</v-icon>
-              </v-btn>
-            </template>
-            <span>{{ $t("clients.disconnect") }}</span>
-          </v-tooltip>
         </template>
       </v-data-table>
     </v-card>
   </div>
 </template>
 
-<script>
-import { mapState } from "vuex";
+<script setup>
+import { computed } from "vue";
+import { useRouter } from "vue-router";
+import Transport from "../components/Transport.vue";
 import SocketHolder from "../SocketHolder";
-import Transport from "../components/Transport";
+import { useConfigStore } from "../stores/config";
+import { useMainStore } from "../stores/main";
 
-export default {
-  name: "Clients",
+const router = useRouter();
+const configStore = useConfigStore();
+const mainStore = useMainStore();
+const disconnectSupported = computed(() => configStore.supportedFeatures.includes("DISCONNECT"));
 
-  components: { Transport },
+const headers = [
+  { title: "#", key: "id" },
+  { title: "Address", key: "address" },
+  { title: "Transport", key: "transport" },
+  { title: "Sockets", key: "sockets" },
+  { title: "", key: "actions", sortable: false },
+];
 
-  data() {
-    return {
-      footerProps: {
-        "items-per-page-options": [20, 100, -1],
-      },
-    };
-  },
-
-  computed: {
-    breadcrumbItems() {
-      return [
-        {
-          text: this.$t("clients.title"),
-          disabled: true,
-        },
-      ];
-    },
-    headers() {
-      return [
-        {
-          text: "#",
-          value: "id",
-          align: "start",
-        },
-        {
-          text: this.$t("sockets.address"),
-          value: "address",
-        },
-        {
-          text: this.$t("sockets.transport"),
-          value: "transport",
-        },
-        {
-          text: this.$t("clients.sockets-count"),
-          value: "sockets",
-        },
-        {
-          value: "actions",
-          align: "end",
-          sortable: false,
-        },
-      ];
-    },
-    ...mapState({
-      clients: (state) => state.main.clients,
-      isReadonly: (state) => state.config.readonly,
-      isSocketDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("DISCONNECT"),
-    }),
-  },
-
-  methods: {
-    disconnect(client) {
-      const socket = client.sockets[0];
-      if (socket) {
-        SocketHolder.socket.emit("_disconnect", socket.nsp, true, socket.id);
-      }
-    },
-    displayDetails(client) {
-      this.$router.push({ name: "client", params: { id: client.id } });
-    },
-  },
-};
-</script>
-
-<style scoped>
-.row-pointer >>> tbody > tr:hover {
-  cursor: pointer;
+function disconnect(client) {
+  const socket = client.sockets[0];
+  if (socket) {
+    SocketHolder.socket?.emit("_disconnect", socket.nsp, true, socket.id);
+  }
 }
-</style>
+
+function onRowClick(_event, { item }) {
+  router.push({ name: "client", params: { id: item.id } });
+}
+</script>

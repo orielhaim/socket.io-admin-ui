@@ -1,106 +1,36 @@
 <template>
-  <v-app-bar app clipped-left :extension-height="extensionHeight">
-    <v-app-bar-nav-icon
-      class="d-lg-none"
-      @click.stop="toggleNavigationDrawer"
-    />
-
+  <v-app-bar>
+    <v-app-bar-nav-icon class="d-lg-none" @click="configStore.toggleNavigationDrawer()" />
     <v-img :src="logoSrc" alt="logo" max-height="40" max-width="40" />
     <v-toolbar-title class="ml-3">Socket.IO Admin UI</v-toolbar-title>
-    <v-btn small class="pa-0 ml-2 elevation-0" :href="linkToReleaseNotes">{{
-      version
-    }}</v-btn>
+    <v-btn variant="text" size="small" class="ml-2 text-none" :href="releaseNotesLink" target="_blank">
+      v{{ version }}
+    </v-btn>
 
     <v-spacer />
 
-    <div class="d-none d-lg-flex">
-      <div>
-        <div>
-          {{ $t("connection.serverUrl") }}{{ $t("separator")
-          }}<code v-if="serverUrl">{{ serverUrl }}</code>
-        </div>
-        <div>
-          {{ $t("status") }}{{ $t("separator")
-          }}<ConnectionStatus :connected="connected" />
-        </div>
+    <div class="d-none d-lg-flex align-center ga-3">
+      <div class="text-caption">
+        <div>{{ $t("connection.serverUrl") }}{{ $t("separator") }}<code>{{ connectionStore.serverUrl || "-" }}</code></div>
+        <div>{{ $t("status") }}{{ $t("separator") }}<ConnectionStatus :connected="connectionStore.connected" /></div>
       </div>
-
-      <v-btn outlined @click="onUpdate" class="ml-3 align-self-center">{{
-        $t("update")
-      }}</v-btn>
+      <v-btn variant="outlined" @click="$emit('update')">{{ $t("update") }}</v-btn>
     </div>
-
-    <template v-slot:extension>
-      <div class="d-flex flex-column d-lg-none">
-        <div class="mt-3">
-          {{ $t("connection.serverUrl") }}{{ $t("separator")
-          }}<code v-if="serverUrl">{{ serverUrl }}</code>
-        </div>
-        <div class="mt-3 mb-3">
-          {{ $t("status") }}{{ $t("separator")
-          }}<ConnectionStatus :connected="connected" />
-          <v-btn small outlined @click="onUpdate" class="ml-3">{{
-            $t("update")
-          }}</v-btn>
-        </div>
-      </div>
-    </template>
   </v-app-bar>
 </template>
 
-<script>
-import { mapState } from "vuex";
-import ConnectionStatus from "./ConnectionStatus";
+<script setup>
+import { computed } from "vue";
+import ConnectionStatus from "./ConnectionStatus.vue";
+import { useConfigStore } from "../stores/config";
+import { useConnectionStore } from "../stores/connection";
+import darkLogo from "../assets/logo-dark.svg";
+import lightLogo from "../assets/logo-light.svg";
 
-const version = process.env.VERSION;
+const configStore = useConfigStore();
+const connectionStore = useConnectionStore();
 
-export default {
-  name: "AppBar",
-
-  components: { ConnectionStatus },
-
-  data() {
-    return {
-      version,
-    };
-  },
-
-  computed: {
-    ...mapState({
-      logoSrc: (state) =>
-        state.config.darkTheme
-          ? require("../assets/logo-dark.svg")
-          : require("../assets/logo-light.svg"),
-      serverUrl: (state) => state.connection.serverUrl,
-      connected: (state) => state.connection.connected,
-    }),
-    linkToReleaseNotes() {
-      return (
-        "https://github.com/socketio/socket.io-admin-ui/releases/tag/" + version
-      );
-    },
-
-    extensionHeight() {
-      switch (this.$vuetify.breakpoint.name) {
-        case "xs":
-        case "sm":
-        case "md":
-          return 96;
-        case "lg":
-        case "xl":
-        default:
-          return 0;
-      }
-    },
-  },
-
-  methods: {
-    onUpdate() {
-      this.$emit("update");
-    },
-    toggleNavigationDrawer() {
-      this.$store.commit("config/toggleNavigationDrawer");
-    },
-  },
-};
+const version = __APP_VERSION__;
+const releaseNotesLink = `https://github.com/socketio/socket.io-admin-ui/releases/tag/${version}`;
+const logoSrc = computed(() => (configStore.darkTheme ? darkLogo : lightLogo));
 </script>

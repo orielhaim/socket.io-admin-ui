@@ -1,124 +1,54 @@
 <template>
   <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
+    <v-breadcrumbs :items="[{ title: $t('servers.title') }]" />
     <v-card>
-      <v-data-table
-        :headers="headers"
-        :items="servers"
-        :footer-props="footerProps"
-      >
-        <template v-slot:item.uptime="{ value }">
-          {{ formatDuration(value) }}
-        </template>
-
-        <template v-slot:item.lastPing="{ value }">
-          {{ delaySinceLastPing(value) }}
-        </template>
-
-        <template v-slot:item.healthy="{ value }">
-          <ServerStatus :healthy="value" />
-        </template>
-
-        <template v-slot:item.actions="{ item }">
-          <v-btn v-if="!item.healthy" @click="removeServer(item)" small>
-            <v-icon>mdi-delete-outline</v-icon>
-          </v-btn>
+      <v-data-table :headers="headers" :items="sortedServers">
+        <template #item.uptime="{ value }">{{ formatDuration(value) }}</template>
+        <template #item.lastPing="{ value }">{{ delaySinceLastPing(value) }}</template>
+        <template #item.healthy="{ value }"><ServerStatus :healthy="value" /></template>
+        <template #item.actions="{ item }">
+          <v-btn v-if="!item.healthy" icon="mdi-delete-outline" size="small" variant="text" @click="serversStore.removeServer(item.serverId)" />
         </template>
       </v-data-table>
     </v-card>
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { sortBy } from "lodash-es";
 import { formatDuration } from "../util";
-import { mapState } from "vuex";
-import ServerStatus from "../components/ServerStatus";
+import ServerStatus from "../components/ServerStatus.vue";
+import { useServersStore } from "../stores/servers";
 
-export default {
-  name: "Servers",
+const serversStore = useServersStore();
+const now = ref(Date.now());
+let timer = null;
 
-  components: { ServerStatus },
+const headers = [
+  { title: "ID", key: "serverId" },
+  { title: "Hostname", key: "hostname" },
+  { title: "PID", key: "pid" },
+  { title: "Uptime", key: "uptime" },
+  { title: "Clients", key: "clientsCount" },
+  { title: "Last ping", key: "lastPing" },
+  { title: "Status", key: "healthy" },
+  { title: "", key: "actions", sortable: false },
+];
 
-  data() {
-    return {
-      footerProps: {
-        "items-per-page-options": [20, 100, -1],
-      },
-      now: Date.now(),
-    };
-  },
+const sortedServers = computed(() => sortBy(serversStore.servers, "serverId"));
 
-  created() {
-    this.interval = setInterval(() => {
-      this.now = Date.now();
-    }, 1000);
-  },
+function delaySinceLastPing(lastPing) {
+  return `${formatDuration((now.value - lastPing) / 1000)} ago`;
+}
 
-  beforeDestroy() {
-    clearInterval(this.interval);
-  },
+onMounted(() => {
+  timer = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
+});
 
-  computed: {
-    breadcrumbItems() {
-      return [
-        {
-          text: this.$t("servers.title"),
-          disabled: true,
-        },
-      ];
-    },
-    headers() {
-      return [
-        {
-          text: this.$t("id"),
-          value: "serverId",
-        },
-        {
-          text: this.$t("servers.hostname"),
-          value: "hostname",
-        },
-        {
-          text: this.$t("servers.pid"),
-          value: "pid",
-        },
-        {
-          text: this.$t("servers.uptime"),
-          value: "uptime",
-        },
-        {
-          text: this.$t("servers.clients-count"),
-          value: "clientsCount",
-        },
-        {
-          text: this.$t("servers.last-ping"),
-          value: "lastPing",
-        },
-        {
-          text: this.$t("status"),
-          value: "healthy",
-        },
-        {
-          value: "actions",
-          align: "end",
-          sortable: false,
-        },
-      ];
-    },
-    ...mapState({
-      servers: (state) => sortBy(state.servers.servers, "serverId"),
-    }),
-  },
-  methods: {
-    formatDuration,
-    delaySinceLastPing(lastPing) {
-      const delay = this.now - lastPing;
-      return `${formatDuration(delay / 1000)} ago`;
-    },
-    removeServer(item) {
-      this.$store.commit("servers/removeServer", item.serverId);
-    },
-  },
-};
+onUnmounted(() => {
+  clearInterval(timer);
+});
 </script>

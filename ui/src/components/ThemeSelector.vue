@@ -1,31 +1,21 @@
 <template>
   <v-switch
-    :input-value="darkTheme"
-    @change="onSelectTheme"
+    v-model="darkTheme"
     :label="$t('config.dark-theme')"
+    density="compact"
+    hide-details
     inset
-    dense
+    class="mb-3"
   />
 </template>
 
-<script>
-import { mapMutations, mapState } from "vuex";
+<script setup>
+import { computed } from "vue";
+import { useConfigStore } from "../stores/config";
 
-export default {
-  name: "ThemeSelector",
-
-  computed: {
-    ...mapState({
-      darkTheme: (state) => state.config.darkTheme,
-    }),
-  },
-
-  methods: {
-    ...mapMutations("config", ["selectTheme"]),
-    onSelectTheme(darkTheme) {
-      this.$vuetify.theme.dark = darkTheme;
-      this.selectTheme(darkTheme);
-    },
-  },
-};
+const configStore = useConfigStore();
+const darkTheme = computed({
+  get: () => configStore.darkTheme,
+  set: (value) => configStore.selectTheme(value),
+});
 </script>

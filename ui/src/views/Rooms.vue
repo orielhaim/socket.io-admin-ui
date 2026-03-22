@@ -1,178 +1,93 @@
 <template>
   <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
+    <v-breadcrumbs :items="[{ title: $t('rooms.title') }]" />
     <v-card>
-      <v-card-text class="d-flex">
+      <v-card-text class="d-flex align-center ga-4">
         <NamespaceSelector />
-
-        <v-switch
-          v-model="showPrivateRooms"
-          @change="onPrivateRoomsUpdate"
-          :label="$t('rooms.show-private')"
-          class="ml-3"
-          inset
-          dense
-        />
+        <v-switch v-model="showPrivateRooms" :label="$t('rooms.show-private')" hide-details inset />
       </v-card-text>
-
-      <v-data-table
-        :headers="headers"
-        :items="filteredRooms"
-        :footer-props="footerProps"
-        class="row-pointer"
-        @click:row="displayDetails"
-      >
-        <template v-slot:item.sockets="{ item }">
-          {{ item.sockets.length }}
-        </template>
-
-        <template v-slot:item.isPrivate="{ value }">
-          <RoomType :is-private="value" />
-        </template>
-
-        <template v-slot:item.actions="{ item }">
-          <v-tooltip bottom v-if="isMultiLeaveSupported && !item.isPrivate">
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
-                @click="clear(item)"
-                :disabled="isReadonly"
-                small
-                class="ml-3"
-              >
-                <v-icon>mdi-tag-off-outline</v-icon>
-              </v-btn>
-            </template>
-            <span>{{ $t("rooms.clear") }}</span>
-          </v-tooltip>
-
-          <v-tooltip bottom v-if="isMultiDisconnectSupported">
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
-                @click="disconnect(item)"
-                :disabled="isReadonly"
-                small
-                class="ml-3"
-              >
-                <v-icon>mdi-logout</v-icon>
-              </v-btn>
-            </template>
-            <span>{{ $t("rooms.disconnect") }}</span>
-          </v-tooltip>
+      <v-data-table :headers="headers" :items="filteredRooms" @click:row="onRowClick">
+        <template #item.isPrivate="{ value }"><RoomType :is-private="value" /></template>
+        <template #item.sockets="{ item }">{{ item.sockets.length }}</template>
+        <template #item.actions="{ item }">
+          <v-btn
+            v-if="multiLeaveSupported && !item.isPrivate"
+            icon="mdi-tag-off-outline"
+            size="small"
+            variant="text"
+            :disabled="configStore.readonly"
+            @click.stop="clear(item)"
+          />
+          <v-btn
+            v-if="multiDisconnectSupported"
+            icon="mdi-logout"
+            size="small"
+            variant="text"
+            :disabled="configStore.readonly"
+            @click.stop="disconnect(item)"
+          />
         </template>
       </v-data-table>
     </v-card>
   </div>
 </template>
 
-<script>
-import { mapGetters, mapState } from "vuex";
-import NamespaceSelector from "../components/NamespaceSelector";
-import SocketHolder from "../SocketHolder";
-import RoomType from "../components/Room/RoomType";
+<script setup>
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { sortBy } from "lodash-es";
+import NamespaceSelector from "../components/NamespaceSelector.vue";
+import RoomType from "../components/Room/RoomType.vue";
+import SocketHolder from "../SocketHolder";
+import { useConfigStore } from "../stores/config";
+import { useMainStore } from "../stores/main";
 
-export default {
-  name: "Rooms",
+const route = useRoute();
+const router = useRouter();
+const configStore = useConfigStore();
+const mainStore = useMainStore();
+const showPrivateRooms = ref(route.query.p === "1");
 
-  components: { RoomType, NamespaceSelector },
+const multiLeaveSupported = computed(() => configStore.supportedFeatures.includes("MLEAVE"));
+const multiDisconnectSupported = computed(() => configStore.supportedFeatures.includes("MDISCONNECT"));
+const headers = [
+  { title: "ID", key: "name" },
+  { title: "Type", key: "isPrivate" },
+  { title: "Sockets", key: "sockets" },
+  { title: "", key: "actions", sortable: false },
+];
 
-  data() {
-    return {
-      showPrivateRooms: false,
-      footerProps: {
-        "items-per-page-options": [20, 100, -1],
-      },
-    };
-  },
+const filteredRooms = computed(() => {
+  const rooms = showPrivateRooms.value
+    ? mainStore.rooms
+    : mainStore.rooms.filter((room) => !room.isPrivate);
+  return sortBy(rooms, "name");
+});
 
-  computed: {
-    breadcrumbItems() {
-      return [
-        {
-          text: this.$t("rooms.title"),
-          disabled: true,
-        },
-      ];
-    },
-    headers() {
-      return [
-        {
-          text: this.$t("id"),
-          value: "name",
-          align: "start",
-        },
-        {
-          text: this.$t("type"),
-          value: "isPrivate",
-        },
-        {
-          text: this.$t("rooms.sockets-count"),
-          value: "sockets",
-        },
-        {
-          value: "actions",
-          align: "end",
-          sortable: false,
-        },
-      ];
-    },
-    ...mapGetters("main", ["rooms"]),
-    ...mapState({
-      selectedNamespace: (state) => state.main.selectedNamespace,
-      isReadonly: (state) => state.config.readonly,
-      isMultiLeaveSupported: (state) =>
-        state.config.supportedFeatures.includes("MLEAVE"),
-      isMultiDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("MDISCONNECT"),
-    }),
-    filteredRooms() {
-      const filteredRooms = this.showPrivateRooms
-        ? this.rooms
-        : this.rooms.filter((room) => !room.isPrivate);
-      return sortBy(filteredRooms, "name");
-    },
-  },
+watch(showPrivateRooms, (value) => {
+  router.replace({ name: "rooms", query: value ? { p: "1" } : {} });
+});
 
-  methods: {
-    clear(room) {
-      SocketHolder.socket.emit("leave", this.selectedNamespace.name, room.name);
-    },
-    disconnect(room) {
-      SocketHolder.socket.emit(
-        "_disconnect",
-        this.selectedNamespace.name,
-        false,
-        room.name
-      );
-    },
-    displayDetails(room) {
-      this.$router.push({
-        name: "room",
-        params: { nsp: this.selectedNamespace.name, name: room.name },
-      });
-    },
-    onPrivateRoomsUpdate(value) {
-      const query = value ? { p: 1 } : {};
-      this.$router.replace({
-        name: "rooms",
-        query,
-      });
-    },
-  },
-
-  mounted() {
-    this.showPrivateRooms = this.$route.query.p === "1";
-  },
-};
-</script>
-
-<style scoped>
-.row-pointer >>> tbody > tr:hover {
-  cursor: pointer;
+function clear(room) {
+  SocketHolder.socket?.emit("leave", mainStore.selectedNamespace?.name, room.name);
 }
-</style>
+
+function disconnect(room) {
+  SocketHolder.socket?.emit(
+    "_disconnect",
+    mainStore.selectedNamespace?.name,
+    false,
+    room.name,
+  );
+}
+
+function onRowClick(_event, { item }) {
+  if (!mainStore.selectedNamespace) {
+    return;
+  }
+  router.push({
+    name: "room",
+    params: { nsp: mainStore.selectedNamespace.name, name: item.name },
+  });
+}
+</script>

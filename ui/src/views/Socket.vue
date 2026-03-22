@@ -1,69 +1,46 @@
 <template>
   <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-container v-if="socket" fluid>
-      <v-row>
-        <v-col sm="12" md="6" lg="4">
-          <SocketDetails :socket="socket" :client="client" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <InitialRequest :socket="socket" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <SocketRooms :socket="socket" />
-        </v-col>
-      </v-row>
-    </v-container>
+    <v-breadcrumbs :items="breadcrumbs" />
+    <v-row v-if="socket">
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title>{{ $t("sockets.details") }}</v-card-title>
+          <v-table>
+            <tbody>
+              <tr><td>ID</td><td>{{ socket.id }}</td></tr>
+              <tr><td>{{ $t("sockets.address") }}</td><td>{{ socket.handshake?.address }}</td></tr>
+              <tr><td>{{ $t("sockets.transport") }}</td><td><Transport :transport="socket.transport" /></td></tr>
+              <tr><td>Namespace</td><td>{{ socket.nsp }}</td></tr>
+            </tbody>
+          </v-table>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title>{{ $t("rooms.title") }}</v-card-title>
+          <v-list>
+            <v-list-item v-for="room in socket.rooms" :key="room">
+              <v-list-item-title>{{ room }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
+    </v-row>
   </div>
 </template>
 
-<script>
-import { mapGetters } from "vuex";
-import SocketRooms from "../components/Socket/SocketRooms";
-import SocketDetails from "../components/Socket/SocketDetails";
-import InitialRequest from "../components/Socket/InitialRequest";
+<script setup>
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import Transport from "../components/Transport.vue";
+import { useMainStore } from "../stores/main";
 
-export default {
-  name: "Socket",
+const route = useRoute();
+const mainStore = useMainStore();
 
-  components: { InitialRequest, SocketDetails, SocketRooms },
-
-  data() {
-    return {
-      socket: null,
-      client: null,
-    };
-  },
-
-  computed: {
-    breadcrumbItems() {
-      return [
-        {
-          text: this.$t("sockets.title"),
-          to: { name: "sockets" },
-        },
-        {
-          text: this.$t("sockets.details"),
-          disabled: true,
-        },
-      ];
-    },
-    ...mapGetters("main", ["findSocketById", "findClientById"]),
-  },
-
-  mounted() {
-    this.socket = this.findSocketById(
-      this.$route.params.nsp,
-      this.$route.params.id
-    );
-    if (this.socket) {
-      this.client = this.findClientById(this.socket.clientId);
-    }
-  },
-};
+const socket = computed(() => mainStore.findSocketById(route.params.nsp, route.params.id));
+const breadcrumbs = computed(() => [
+  { title: "Sockets", to: { name: "sockets" } },
+  { title: "Details" },
+]);
 </script>
-
-<style scoped></style>
